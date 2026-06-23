@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir \
 COPY beam/ /app/beam/
 
 # Crear las carpetas de almacenamiento local para evitar fallos de escritura de directorios
-RUN mkdir -p /app/data/silver /app/data/audit
+RUN mkdir -p /app/data/raw /app/data/silver /app/data/audit
 
 # Definir el punto de entrada para el contenedor ejecutando el pipeline
 ENTRYPOINT ["python", "beam/pipeline.py"]

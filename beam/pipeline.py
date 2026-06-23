@@ -65,6 +65,13 @@ class ParseSalesData(beam.DoFn):
                 )
                 return
             
+        if row["currency"].strip() not in ["CLP", "PEN", "ARS"]:
+            yield beam.pvalue.TaggedOutput(
+                self.REJECTED_TAG,
+                    {**row, "reason": f"Invalid currency: {row['currency']}", "source": "sales"},
+                )
+            return
+        
         # validar amount numerico y positivo
         try:
             amount = float(row["amount"])
@@ -166,8 +173,10 @@ class JoinSalesAndLogs(beam.DoFn):
         for log in logs_data:
             status_history.append({
                 "status": log["status_name"],
-                "date":  datetime.fromisoformat(log["status_date"])
+                "date":  datetime.datetime.fromisoformat(log["status_date"]).replace(tzinfo=datetime.timezone.utc)
             })
+
+        status_history = sorted(status_history, key=lambda x: x["date"])
 
         # Construir el registro final para la capa Silver desnormalizado
         yield {
@@ -206,7 +215,7 @@ def build_pipeline(sales_path, logs_path, batch_id):
             | "CoGroupByKey" >> beam.CoGroupByKey()
             | "JoinSalesAndLogs" >> beam.ParDo(JoinSalesAndLogs(batch_id=batch_id))
             | "WriteToParquet" >> beam.io.parquetio.WriteToParquet(
-                file_path_prefix="data/silver/sales_enriched",
+                file_path_prefix="data/silver/sales_enriched", 
                 schema=schema,
                 file_name_suffix=".parquet"
             )
@@ -216,8 +225,8 @@ def build_pipeline(sales_path, logs_path, batch_id):
         (
             (sales.rejected, logs.rejected)
             | "UnirRechazados" >> beam.Flatten()
-            | "FormatToString" >> beam.Map(str) # Convierte el diccionario a cadena de texto
-            | "GuardarRejected" >> beam.io.WriteToText(
+            | "FormatToCSV" >> beam.Map(lambda r: f"{r.get('source','')},{r.get('reason','')},{r.get('raw','')}")
+            | "SaveRejected" >> beam.io.WriteToText(
                 file_path_prefix="data/audit/rejected_sales", 
                 file_name_suffix=".csv",
                 shard_name_template="" # Genera un solo archivo de salida

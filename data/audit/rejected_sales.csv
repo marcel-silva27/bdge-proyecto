@@ -1,0 +1,4 @@
+logs,Invalid status: INVALID_STATUS,
+sales,Financial anomaly: Amount debe ser positivo,
+sales,Financial anomaly: could not convert string to float: 'abc',
+sales,Missing required field: sku,TXN-012,ST-CHI-01,,18000,CLP
