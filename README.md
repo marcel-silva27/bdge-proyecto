@@ -1,6 +1,12 @@
+# Integrantes
+
+Marcel Silva
+Aylin Sandoval
+
 # Super-Market
 
 Pipeline de datos batch que procesa transacciones de venta desde múltiples fuentes (Chile, Argentina, Perú), las enriquece y consolida en métricas Gold usando **Apache Beam → PostgreSQL → dbt**, orquestado con **Apache Airflow**.
+
 
 ---
 
