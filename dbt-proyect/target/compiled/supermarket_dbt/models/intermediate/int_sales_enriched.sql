@@ -1,5 +1,5 @@
 WITH base AS (
-    SELECT * FROM {{ ref('stg_sales') }}
+    SELECT * FROM "supermarket"."public"."stg_sales"
 ),
 
 cleaned AS (

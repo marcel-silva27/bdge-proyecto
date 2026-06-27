@@ -1,9 +1,7 @@
 
     
     
-    
-    create table "supermarket"."public"."ref_exchange_rates" ("currency" text,"rate_to_usd" float8)
-  ;
+    truncate table "supermarket"."public"."ref_exchange_rates";
     -- dbt seed --
     
           insert into "supermarket"."public"."ref_exchange_rates" ("currency", "rate_to_usd") values

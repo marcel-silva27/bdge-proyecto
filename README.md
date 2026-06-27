@@ -57,14 +57,32 @@ No se requiere Python, dbt ni Airflow instalados localmente; todo corre en conte
 git clone <url-del-repo>
 cd bdge-proyecto
 
-# 2. Levantar todos los servicios
+# 2. Levantar todos los servicios y cargar tasas de cambios
 docker compose up --build
-
+docker exec -it -w /opt/airflow/dbt bdge-proyecto-airflow-webserver-1 dbt seed --profiles-dir .
 # 3. Acceder a la interfaz de Airflow
 #    URL:      http://localhost:8080
 #    Usuario:  admin
 #    Contraseña: admin
+
+
+# 4.Verificar resultados en postgres
+
+docker exec -it bdge-proyecto-postgres-1 psql -U admin -d supermarket
+
+\dt                       
+SELECT * FROM raw_sales LIMIT 5;
+SELECT * FROM stg_sales LIMIT 5;
+SELECT * FROM ref_exchange_rates;
+\q
+
+# 5. docker debug y docker run
+docker exec -it -w /opt/airflow/dbt bdge-proyecto-airflow-webserver-1 dbt debug --profiles-dir .
+docker exec -it -w /opt/airflow/dbt bdge-proyecto-airflow-webserver-1 dbt seed --profiles-dir .
+docker exec -it -w /opt/airflow/dbt bdge-proyecto-airflow-webserver-1 dbt run --profiles-dir .
 ```
+
+
 
 El servicio `beam-pipeline` corre automáticamente al iniciar y genera el Parquet en `data/silver/`. Airflow queda disponible para ejecutar el DAG de forma manual o diaria.
 
@@ -169,14 +187,24 @@ bdge-proyecto/
 ├── dags/
 │   └── global_mart_consolidation_pipeline.py  # DAG de Airflow
 ├── dbt-proyect/
-│   ├── models/
-│   │   ├── staging/stg-sales.sql
-│   │   └── marts/sales_metrics.sql
-│   ├── dbt_project.yml
-│   └── profiles.yml
+|   ├── models/
+│   ├── staging/
+│   │   └── stg_sales.sql         
+│   ├── intermediate/
+│   │   └── int_sales_enriched.sql 
+│   ├── marts/
+│   │   └── fct_sales.sql          
+│   └── schema.yml                
+|   ├── seeds/
+|   │   └── ref_exchange_rates.csv     
+|   ├── tests/
+|   │   └── assert_amount_usd_positive.sql 
+|   └── dbt_project.yml    
 ├── data/
 │   ├── raw/                 # Archivos de entrada
 │   ├── silver/              # Parquet generado por Beam
 │   └── audit/               # Registros rechazados
 └── docker-compose.yml
+
+
 ```

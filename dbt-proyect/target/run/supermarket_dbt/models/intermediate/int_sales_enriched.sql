@@ -1,5 +1,10 @@
-WITH base AS (
-    SELECT * FROM {{ ref('stg_sales') }}
+
+  create view "supermarket"."public"."int_sales_enriched__dbt_tmp"
+    
+    
+  as (
+    WITH base AS (
+    SELECT * FROM "supermarket"."public"."stg_sales"
 ),
 
 cleaned AS (
@@ -50,3 +55,4 @@ FROM cleaned b
 LEFT JOIN created_events   cr ON b.transaction_id = cr.transaction_id
 LEFT JOIN completed_events co ON b.transaction_id = co.transaction_id
 LEFT JOIN refunded_events  re ON b.transaction_id = re.transaction_id
+  );
