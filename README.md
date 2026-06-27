@@ -1,7 +1,7 @@
 # Integrantes
 
-Marcel Silva
-Aylin Sandoval
+- Marcel Silva
+- Aylin Sandoval
 
 # Super-Market
 
