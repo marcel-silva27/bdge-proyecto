@@ -1,0 +1,14 @@
+#profiles.yml
+
+supermarket_project:
+  outputs:
+    dev:
+      type: postgres
+      host: postgres          # Cambiar si tu Postgres está en un contenedor Docker (ej: "postgres-db")
+      user: admin          # Tu usuario de Postgres
+      password: password123      # Tu contraseña de Postgres
+      port: 5432
+      dbname: supermarket      # El nombre de tu base de datos
+      schema: public            # El esquema donde dbt creará las tablas finales
+      threads: 4
+  target: dev

@@ -1,0 +1,77 @@
+#docker-compose.yml
+
+version: '3.8'
+
+services:
+  # El motor de base de datos
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: supermarket
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d supermarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Tu pipeline de procesamiento
+  beam-pipeline:
+    build: 
+      context: .
+      dockerfile: beam/Dockerfile
+    volumes:
+      - ./data:/app/data
+    command: >
+      --sales_path /app/data/raw/sales_data.csv 
+      --logs_path /app/data/raw/status_logs.csv
+    depends_on:
+      postgres:
+        condition: service_healthy 
+      
+    
+  airflow-webserver:
+    image: apache/airflow:2.9.1
+    command: bash -c "airflow db init && airflow users create --username admin --firstname Admin --lastname Admin --role Admin --email admin@example.com --password admin && airflow webserver"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data  # Para que el FileSensor pueda ver tus archivos
+      - ./dbt-proyect:/opt/airflow/dbt # Para que dbt pueda ejecutarse
+      - ./beam:/opt/airflow/beam # Para que el pipeline de Beam pueda ejecutarse
+      - /var/run/docker.sock:/var/run/docker.sock # Vital para ejecutar Docker desde dentro
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:password123@postgres/supermarket
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - _PIP_ADDITIONAL_REQUIREMENTS=apache-beam[interactive] dbt-postgres psycopg2-binary pyarrow pandas sqlalchemy
+      - AIRFLOW__WEBSERVER__SECRET_KEY=supermarket_secret_key_123
+    depends_on:
+      - postgres
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.1
+    command: scheduler
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./dbt-proyect:/opt/airflow/dbt
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./beam:/opt/airflow/beam
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:password123@postgres/supermarket
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - _PIP_ADDITIONAL_REQUIREMENTS=apache-beam[interactive] dbt-postgres psycopg2-binary pyarrow pandas sqlalchemy
+      - AIRFLOW__WEBSERVER__SECRET_KEY=supermarket_secret_key_123
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

@@ -12,7 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Instalar las librerías requeridas asegurando las versiones correctas
 RUN pip install --no-cache-dir \
     apache-beam[gcp]==2.56.0 \
-    pyarrow==14.0.1
+    pyarrow==14.0.1 \
+    pandas \
+    sqlalchemy \
+    psycopg2-binary
 
 # Copiar la carpeta del script de Beam respetando la estructura exigida
 COPY beam/ /app/beam/

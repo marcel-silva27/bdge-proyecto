@@ -1,4 +1,5 @@
-logs,Invalid status: INVALID_STATUS,
+logs,Invalid status: BAD_STATUS,
 sales,Financial anomaly: Amount debe ser positivo,
-sales,Financial anomaly: could not convert string to float: 'abc',
-sales,Missing required field: sku,TXN-012,ST-CHI-01,,18000,CLP
+sales,Financial anomaly: Amount debe ser positivo,
+sales,Missing required field: sku,TX-006,ST-ARG-01,,4500,ARS
+sales,Financial anomaly: could not convert string to float: 'INVALID_AMT',

@@ -1,0 +1,14 @@
+
+    
+    
+    
+    create table "supermarket"."public"."ref_exchange_rates" ("currency" text,"rate_to_usd" float8)
+  ;
+    -- dbt seed --
+    
+          insert into "supermarket"."public"."ref_exchange_rates" ("currency", "rate_to_usd") values
+          (%s,%s),(%s,%s),(%s,%s)
+      
+
+;
+  

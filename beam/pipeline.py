@@ -4,6 +4,9 @@ import csv
 from typing import Iterator
 import datetime
 import argparse
+import pandas as pd
+from sqlalchemy import create_engine
+import json
 
 # Esquema PyArrow para la Capa Silver
 schema = pa.schema([
@@ -193,6 +196,23 @@ class JoinSalesAndLogs(beam.DoFn):
             },
         }
 
+def load_to_postgres(parquet_path: str, db_url: str, table_name: str):
+    """Lee el archivo Parquet de la Capa Silver y lo inyecta a PostgreSQL."""
+    print("\nIniciando inyección a PostgreSQL")
+    
+    # 1. Leer el Parquet recién creado
+    df = pd.read_parquet(parquet_path)
+    
+    # 2. Convertir las estructuras anidadas a JSON strings para que Postgres 
+    df['financials'] = df['financials'].apply(lambda x: json.dumps(x, default=str) if pd.notnull(x) else None)
+    df['status_history'] = df['status_history'].apply(lambda x: json.dumps(x, default=str) if x is not None else None)
+    df['metadata'] = df['metadata'].apply(lambda x: json.dumps(x, default=str) if pd.notnull(x) else None)
+    
+    # 3. Conectar a Postgres y cargar
+    engine = create_engine(db_url)
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
+    print(f"Éxito: Datos cargados en la tabla '{table_name}'.\n")
+
 
 def build_pipeline(sales_path, logs_path, batch_id):
     # Opciones de Pipeline para ejecución local directa
@@ -217,7 +237,8 @@ def build_pipeline(sales_path, logs_path, batch_id):
             | "WriteToParquet" >> beam.io.parquetio.WriteToParquet(
                 file_path_prefix="data/silver/sales_enriched", 
                 schema=schema,
-                file_name_suffix=".parquet"
+                file_name_suffix=".parquet",
+                shard_name_template=""
             )
         )
 
@@ -247,5 +268,12 @@ if __name__ == "__main__":
     
     args, beam_args = parser.parse_known_args()
     
-    # Ejecutamos la función constructora
+    ## 1. Ejecutar el pipeline de Beam (Genera el Parquet)
     build_pipeline(args.sales_path, args.logs_path, args.batch_id)
+
+    # 2. Inyectar el Parquet a PostgreSQL
+    # Nota: Usamos "postgres" como host porque ese será el nombre del servicio en Docker Compose
+    DB_URL = "postgresql://admin:password123@postgres:5432/supermarket"
+    PARQUET_FILE = "data/silver/sales_enriched.parquet"
+    
+    load_to_postgres(PARQUET_FILE, DB_URL, "raw_sales")

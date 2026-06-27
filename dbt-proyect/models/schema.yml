@@ -1,0 +1,116 @@
+version: 2
+
+# ─────────────────────────────────────────────
+# STAGING
+# ─────────────────────────────────────────────
+models:
+  - name: stg_sales
+    description: >
+      Vista de staging que desanida la tabla raw_sales cargada por Apache Beam.
+      Normaliza tipos y renombra columnas. Un registro por transacción.
+    columns:
+      - name: transaction_id
+        description: Identificador único de la transacción (llave primaria).
+        tests:
+          - not_null
+          - unique
+
+      - name: store_id
+        description: Código de la sucursal (ej. ST-CHI-01, ST-ARG-02).
+        tests:
+          - not_null
+
+      - name: raw_amount
+        description: Monto original en moneda local, casteado a numeric.
+        tests:
+          - not_null
+
+      - name: currency
+        description: Moneda de la transacción.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CLP', 'PEN', 'ARS']
+
+      - name: sku
+        description: Identificador de producto (heredado de raw_sales si existe).
+
+# ─────────────────────────────────────────────
+# INTERMEDIATE
+# ─────────────────────────────────────────────
+  - name: int_sales_enriched
+    description: >
+      Vista intermedia que calcula métricas de ciclo de vida por transacción:
+      tiempo de conversión (CREATED → COMPLETED) y flag de devolución (REFUNDED).
+    columns:
+      - name: transaction_id
+        description: Identificador único de la transacción.
+        tests:
+          - not_null
+          - unique
+
+      - name: conversion_time_hours
+        description: >
+          Horas transcurridas entre CREATED y COMPLETED.
+          NULL si la transacción no tiene estado COMPLETED aún.
+
+      - name: is_refunded
+        description: TRUE si la transacción tiene al menos un estado REFUNDED.
+        tests:
+          - not_null
+
+# ─────────────────────────────────────────────
+# MARTS (Gold)
+# ─────────────────────────────────────────────
+  - name: fct_sales
+    description: >
+      Tabla de hechos Gold. Agrega KPIs financieros por tienda y día,
+      con montos convertidos a USD usando ref_exchange_rates.
+    columns:
+      - name: store_id
+        description: Código de sucursal.
+        tests:
+          - not_null
+
+      - name: sale_date
+        description: Fecha de la venta (extraída de created_at).
+        tests:
+          - not_null
+
+      - name: total_sales_usd
+        description: Suma de montos convertidos a USD.
+        tests:
+          - not_null
+
+      - name: total_transactions
+        description: Cantidad de transacciones en el período.
+        tests:
+          - not_null
+
+      - name: refund_rate
+        description: Porcentaje de transacciones devueltas (0-100).
+
+      - name: ticket_promedio_usd
+        description: Valor medio de venta en USD por tienda y día.
+
+# ─────────────────────────────────────────────
+# SEEDS
+# ─────────────────────────────────────────────
+seeds:
+  - name: ref_exchange_rates
+    description: >
+      Tabla de referencia estática con tasas de cambio a USD.
+      CLP: 950 | PEN: 3.7 | ARS: 800
+    columns:
+      - name: currency
+        description: Código de moneda ISO 4217.
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['CLP', 'PEN', 'ARS']
+
+      - name: rate_to_usd
+        description: Unidades de moneda local equivalentes a 1 USD.
+        tests:
+          - not_null

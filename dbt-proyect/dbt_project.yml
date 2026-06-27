@@ -1,0 +1,25 @@
+name: 'supermarket_dbt'
+version: '1.0.0'
+profile: 'supermarket_project'
+config-version: 2
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  supermarket_dbt:
+    staging:
+      +materialized: view        # Vista liviana, sin persistencia física
+    intermediate:
+      +materialized: view        # Lógica de negocio intermedia, también vista
+    marts:
+      +materialized: table       # Tablas físicas Gold, listas para BI/consumo
+ 
